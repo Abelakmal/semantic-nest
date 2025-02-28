@@ -1,0 +1,9 @@
+export function generateUpdateDtoContent(
+  className: string,
+  folderName: string
+): string {
+  return `import { PartialType } from '@nestjs/swagger';
+  import { Create${className}Dto } from './create-${folderName}.dto';
+
+  export class Update${className}Dto extends PartialType(Create${className}Dto) {}   `;
+}
