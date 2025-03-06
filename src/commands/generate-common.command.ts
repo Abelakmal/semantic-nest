@@ -11,6 +11,8 @@ import { generateQueryParamaterDtoContent } from "../templates/common/dto/query-
 import { generatePaginationDtoContent } from "../templates/common/dto/pagination-dto.template";
 import { FileMapType } from "../interfaces/general.type";
 import { generateSwaggerExampleResponseContent } from "../templates/common/swagger/swagger-example-response.template";
+import { generateGlobalInterfaceContent } from "../templates/common/interfaces/global-interface.template";
+import { generateJwtInterfaceContent } from "../templates/common/interfaces/jwt-interface.template";
 
 @Command({
   name: "generate:common",
@@ -29,7 +31,7 @@ export class GenerateCommonCommand extends CommandRunner {
 
     try {
       await this.createCommandStructure(modulePath);
-      //   await this.updateAppModule(className, folderName);
+      await this.updateMainTs();
       console.log(`✅  created common successfully!`);
     } catch (error) {
       console.error("❌ Error generating common:", error);
@@ -47,6 +49,7 @@ export class GenerateCommonCommand extends CommandRunner {
     await this.handleDecorator(modulePath);
     await this.handleDto(modulePath);
     await this.handleSwagger(modulePath);
+    await this.handleInterface(modulePath);
   }
 
   public async handleBaseStructure(modulePath: string): Promise<void> {
@@ -105,5 +108,62 @@ export class GenerateCommonCommand extends CommandRunner {
     for (const [fileName, content] of Object.entries(files)) {
       await fs.writeFile(path.join(modulePath, fileName), content);
     }
+  }
+
+  public async handleInterface(modulePath: string): Promise<void> {
+    const interfaceDir: string = path.join(modulePath, "interfaces");
+    await fs.mkdir(interfaceDir, { recursive: true });
+
+    const files: FileMapType = {
+      ["interfaces/global.d.ts"]: generateGlobalInterfaceContent(),
+      ["interfaces/jwt-payload.interface.ts"]: generateJwtInterfaceContent(),
+    };
+
+    for (const [fileName, content] of Object.entries(files)) {
+      await fs.writeFile(path.join(modulePath, fileName), content);
+    }
+  }
+
+  async updateMainTs() {
+    const mainTsPath = path.join("src", "main.ts");
+    let mainTsContent = await fs.readFile(mainTsPath, "utf-8");
+
+    if (mainTsContent.includes("app.useGlobalPipes")) {
+      console.log("⚠️ Konfigurasi global pipes sudah ada di main.ts");
+      return;
+    }
+
+    const configCode = `
+    app.useGlobalPipes(
+      new ValidationPipe({
+        transform: true,
+      }),
+    );
+  
+    app.setGlobalPrefix('api');
+  
+    const config = new DocumentBuilder()
+      .setTitle('Project Name')
+      .setDescription('Ini dekripsi')
+      .setVersion('1.0.0')
+      .addBearerAuth()
+      .build();
+  
+    const document = SwaggerModule.createDocument(app, config);
+  
+    SwaggerModule.setup('docs', app, document, {
+      useGlobalPrefix: true,
+      customSiteTitle: 'E-Wawancara',
+    });
+    `;
+
+    mainTsContent = mainTsContent.replace(
+      /(await app.listen\(\d+\);)/,
+      `${configCode}\n  $1`
+    );
+
+    await fs.writeFile(mainTsPath, mainTsContent, "utf-8");
+
+    console.log("✅ Konfigurasi berhasil ditambahkan ke main.ts");
   }
 }

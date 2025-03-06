@@ -28,6 +28,8 @@ const metadata_decorator_template_1 = require("../templates/common/decorators/me
 const query_paramater_dto_template_1 = require("../templates/common/dto/query-paramater-dto.template");
 const pagination_dto_template_1 = require("../templates/common/dto/pagination-dto.template");
 const swagger_example_response_template_1 = require("../templates/common/swagger/swagger-example-response.template");
+const global_interface_template_1 = require("../templates/common/interfaces/global-interface.template");
+const jwt_interface_template_1 = require("../templates/common/interfaces/jwt-interface.template");
 let GenerateCommonCommand = class GenerateCommonCommand extends nest_commander_1.CommandRunner {
     run(passedParams, options) {
         var _a, _b;
@@ -40,7 +42,7 @@ let GenerateCommonCommand = class GenerateCommonCommand extends nest_commander_1
             const modulePath = path.join(process.cwd(), "src", "common");
             try {
                 yield this.createCommandStructure(modulePath);
-                //   await this.updateAppModule(className, folderName);
+                yield this.updateMainTs();
                 console.log(`✅  created common successfully!`);
             }
             catch (error) {
@@ -58,6 +60,7 @@ let GenerateCommonCommand = class GenerateCommonCommand extends nest_commander_1
             yield this.handleDecorator(modulePath);
             yield this.handleDto(modulePath);
             yield this.handleSwagger(modulePath);
+            yield this.handleInterface(modulePath);
         });
     }
     handleBaseStructure(modulePath) {
@@ -111,6 +114,55 @@ let GenerateCommonCommand = class GenerateCommonCommand extends nest_commander_1
             for (const [fileName, content] of Object.entries(files)) {
                 yield fs_1.promises.writeFile(path.join(modulePath, fileName), content);
             }
+        });
+    }
+    handleInterface(modulePath) {
+        return __awaiter(this, void 0, void 0, function* () {
+            const interfaceDir = path.join(modulePath, "interfaces");
+            yield fs_1.promises.mkdir(interfaceDir, { recursive: true });
+            const files = {
+                ["interfaces/global.d.ts"]: (0, global_interface_template_1.generateGlobalInterfaceContent)(),
+                ["interfaces/jwt-payload.interface.ts"]: (0, jwt_interface_template_1.generateJwtInterfaceContent)(),
+            };
+            for (const [fileName, content] of Object.entries(files)) {
+                yield fs_1.promises.writeFile(path.join(modulePath, fileName), content);
+            }
+        });
+    }
+    updateMainTs() {
+        return __awaiter(this, void 0, void 0, function* () {
+            const mainTsPath = path.join("src", "main.ts");
+            let mainTsContent = yield fs_1.promises.readFile(mainTsPath, "utf-8");
+            if (mainTsContent.includes("app.useGlobalPipes")) {
+                console.log("⚠️ Konfigurasi global pipes sudah ada di main.ts");
+                return;
+            }
+            const configCode = `
+    app.useGlobalPipes(
+      new ValidationPipe({
+        transform: true,
+      }),
+    );
+  
+    app.setGlobalPrefix('api');
+  
+    const config = new DocumentBuilder()
+      .setTitle('Project Name')
+      .setDescription('Ini dekripsi')
+      .setVersion('1.0.0')
+      .addBearerAuth()
+      .build();
+  
+    const document = SwaggerModule.createDocument(app, config);
+  
+    SwaggerModule.setup('docs', app, document, {
+      useGlobalPrefix: true,
+      customSiteTitle: 'E-Wawancara',
+    });
+    `;
+            mainTsContent = mainTsContent.replace(/(await app.listen\(\d+\);)/, `${configCode}\n  $1`);
+            yield fs_1.promises.writeFile(mainTsPath, mainTsContent, "utf-8");
+            console.log("✅ Konfigurasi berhasil ditambahkan ke main.ts");
         });
     }
 };

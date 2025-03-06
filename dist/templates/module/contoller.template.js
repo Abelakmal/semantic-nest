@@ -66,8 +66,7 @@ export class ${className}Controller {
   ): Promise<BaseSuccessResponse<Response${className}Dto>> {
     const { page = 1, limit = 10 } = queryParameterDto;
     const [result, total] = await this.${folderNameCamelCase}Service.findAndCount(
-      queryParameterDto,
-      undefined,
+      queryParameterDto
     );
 
     return {

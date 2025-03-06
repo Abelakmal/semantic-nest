@@ -1,5 +1,5 @@
 export function generateBaseRepositoryContent(): string {
-  return `import { DataSource, Repository, In, ObjectLiteral } from 'typeorm';
+  return `import { DataSource, Repository, In, FindOptionsWhere } from 'typeorm';
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { BaseEntity } from './base.entity';
 
@@ -19,28 +19,33 @@ export class BaseRepository<
     value: string | number,
     operator = '=',
   ): Promise<TEntity | null> {
-    
+    return await this.createQueryBuilder()
+      .where(this.entity.name + '.' + column + operator + ' :value', {
+        value,
+      })
+      .getOne();
   }
 
   async findByIdsFail(
-    ids: number[],
+    ids: string[],
     relations: string[] = [],
   ): Promise<TEntity[]> {
     const instances = await this.find({
-      where: { id: In(ids) } as any,
+      where: { id: In(ids) } as FindOptionsWhere<TEntity>,
       relations,
     });
 
-    const foundIds = instances.map((instance: any) => instance.id);
+    const foundIds = instances.map((instance: TEntity) => instance.id);
     const notFoundIds = ids.filter((id) => !foundIds.includes(id));
 
     if (notFoundIds.length > 0) {
       throw new NotFoundException(
-        this.entity.name +' IDs not found: ' + notFoundIds.join(', ')},
+        this.entity.name + ' IDs not found: ' + notFoundIds.join(', '),
       );
     }
 
     return instances;
   }
-}`;
+}
+`;
 }
