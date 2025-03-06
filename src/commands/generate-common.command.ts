@@ -11,6 +11,8 @@ import { generateQueryParamaterDtoContent } from "../templates/common/dto/query-
 import { generatePaginationDtoContent } from "../templates/common/dto/pagination-dto.template";
 import { FileMapType } from "../interfaces/general.type";
 import { generateSwaggerExampleResponseContent } from "../templates/common/swagger/swagger-example-response.template";
+import { generateGlobalInterfaceContent } from "../templates/common/interfaces/global-interface.template";
+import { generateJwtInterfaceContent } from "../templates/common/interfaces/jwt-interface.template";
 
 @Command({
   name: "generate:common",
@@ -47,6 +49,7 @@ export class GenerateCommonCommand extends CommandRunner {
     await this.handleDecorator(modulePath);
     await this.handleDto(modulePath);
     await this.handleSwagger(modulePath);
+    await this.handleInterface(modulePath);
   }
 
   public async handleBaseStructure(modulePath: string): Promise<void> {
@@ -100,6 +103,20 @@ export class GenerateCommonCommand extends CommandRunner {
     const files: FileMapType = {
       ["swagger/swagger-example.response.ts"]:
         generateSwaggerExampleResponseContent(),
+    };
+
+    for (const [fileName, content] of Object.entries(files)) {
+      await fs.writeFile(path.join(modulePath, fileName), content);
+    }
+  }
+
+  public async handleInterface(modulePath: string): Promise<void> {
+    const interfaceDir: string = path.join(modulePath, "interfaces");
+    await fs.mkdir(interfaceDir, { recursive: true });
+
+    const files: FileMapType = {
+      ["interfaces/global.d.ts"]: generateGlobalInterfaceContent(),
+      ["interfaces/jwt-payload.interface.ts"]: generateJwtInterfaceContent(),
     };
 
     for (const [fileName, content] of Object.entries(files)) {

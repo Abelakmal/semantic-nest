@@ -28,6 +28,8 @@ const metadata_decorator_template_1 = require("../templates/common/decorators/me
 const query_paramater_dto_template_1 = require("../templates/common/dto/query-paramater-dto.template");
 const pagination_dto_template_1 = require("../templates/common/dto/pagination-dto.template");
 const swagger_example_response_template_1 = require("../templates/common/swagger/swagger-example-response.template");
+const global_interface_template_1 = require("../templates/common/interfaces/global-interface.template");
+const jwt_interface_template_1 = require("../templates/common/interfaces/jwt-interface.template");
 let GenerateCommonCommand = class GenerateCommonCommand extends nest_commander_1.CommandRunner {
     run(passedParams, options) {
         var _a, _b;
@@ -58,6 +60,7 @@ let GenerateCommonCommand = class GenerateCommonCommand extends nest_commander_1
             yield this.handleDecorator(modulePath);
             yield this.handleDto(modulePath);
             yield this.handleSwagger(modulePath);
+            yield this.handleInterface(modulePath);
         });
     }
     handleBaseStructure(modulePath) {
@@ -107,6 +110,19 @@ let GenerateCommonCommand = class GenerateCommonCommand extends nest_commander_1
             yield fs_1.promises.mkdir(swaggerDir, { recursive: true });
             const files = {
                 ["swagger/swagger-example.response.ts"]: (0, swagger_example_response_template_1.generateSwaggerExampleResponseContent)(),
+            };
+            for (const [fileName, content] of Object.entries(files)) {
+                yield fs_1.promises.writeFile(path.join(modulePath, fileName), content);
+            }
+        });
+    }
+    handleInterface(modulePath) {
+        return __awaiter(this, void 0, void 0, function* () {
+            const interfaceDir = path.join(modulePath, "interfaces");
+            yield fs_1.promises.mkdir(interfaceDir, { recursive: true });
+            const files = {
+                ["interfaces/global.d.ts"]: (0, global_interface_template_1.generateGlobalInterfaceContent)(),
+                ["interfaces/jwt-payload.interface.ts"]: (0, jwt_interface_template_1.generateJwtInterfaceContent)(),
             };
             for (const [fileName, content] of Object.entries(files)) {
                 yield fs_1.promises.writeFile(path.join(modulePath, fileName), content);
