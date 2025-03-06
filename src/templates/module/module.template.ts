@@ -7,6 +7,8 @@ import { ${className}Controller } from './${folderName}.controller';
 import { ${className}Service } from './${folderName}.service';
 import { ${className} } from './entities/${folderName}.entity';
 import { ${className}Repository } from './${folderName}.repository';
+import { TypeOrmModule } from '@nestjs/typeorm';
+
 
 @Module({
   imports: [TypeOrmModule.forFeature([${className}])],
