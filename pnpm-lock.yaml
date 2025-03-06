@@ -20,6 +20,9 @@ importers:
       nest-commander:
         specifier: ^3.15.0
         version: 3.16.0(@nestjs/common@11.0.10(reflect-metadata@0.2.2)(rxjs@7.8.1))(@nestjs/core@11.0.10)(@types/inquirer@8.2.10)(typescript@4.9.5)
+      pluralize:
+        specifier: ^8.0.0
+        version: 8.0.0
     devDependencies:
       '@angular-devkit/core':
         specifier: ^16.1.4
@@ -33,6 +36,9 @@ importers:
       '@nestjs/schematics':
         specifier: ^9.0.0
         version: 9.2.0(typescript@4.9.5)
+      '@types/pluralize':
+        specifier: ^0.0.33
+        version: 0.0.33
       eslint:
         specifier: ^9.21.0
         version: 9.21.0
@@ -247,6 +253,9 @@ packages:
 
   '@types/node@22.13.4':
     resolution: {integrity: sha512-ywP2X0DYtX3y08eFVx5fNIw7/uIv8hYUKgXoK8oayJlLnKcRfEYCxWMVE1XagUdVtCJlZT1AU4LXEABW+L1Peg==}
+
+  '@types/pluralize@0.0.33':
+    resolution: {integrity: sha512-JOqsl+ZoCpP4e8TDke9W79FDcSgPAR0l6pixx2JHkhnRjvShyYiAYw2LVsnA7K08Y6DeOnaU6ujmENO4os/cYg==}
 
   '@types/through@0.0.33':
     resolution: {integrity: sha512-HsJ+z3QuETzP3cswwtzt2vEIiHBk/dCcHGhbmG5X3ecnwFD/lPrMpliGXxSCg03L9AhrdwA4Oz/qfspkDW+xGQ==}
@@ -1539,6 +1548,8 @@ snapshots:
   '@types/node@22.13.4':
     dependencies:
       undici-types: 6.20.0
+
+  '@types/pluralize@0.0.33': {}
 
   '@types/through@0.0.33':
     dependencies:
