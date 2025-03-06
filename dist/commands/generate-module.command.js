@@ -30,6 +30,9 @@ const entities_template_1 = require("../templates/module/entities.template");
 const create_dto_template_1 = require("../templates/module/create-dto.template");
 const update_dto_template_1 = require("../templates/module/update-dto.template");
 const response_template_1 = require("../templates/module/response.template");
+const filtering_template_1 = require("../templates/module/filtering.template");
+const interface_tempalate_1 = require("../templates/module/interface.tempalate");
+const text_format_helper_1 = require("../helpers/text-format.helper");
 let GenerateModuleCommand = class GenerateModuleCommand extends nest_commander_1.CommandRunner {
     run(passedParams, options) {
         var _a, _b;
@@ -39,7 +42,7 @@ let GenerateModuleCommand = class GenerateModuleCommand extends nest_commander_1
                 console.error("❌ Module name is required! Use: generate:module <name>");
                 return;
             }
-            const className = this.capitalize(moduleName);
+            const className = (0, text_format_helper_1.toCamelCase)((0, text_format_helper_1.capitalize)(moduleName));
             const folderName = moduleName.toLowerCase();
             const modulePath = path.join(process.cwd(), "src", "modules", folderName);
             try {
@@ -55,24 +58,25 @@ let GenerateModuleCommand = class GenerateModuleCommand extends nest_commander_1
     setModuleName(value) {
         this.moduleName = value;
     }
-    capitalize(text) {
-        return text.charAt(0).toUpperCase() + text.slice(1);
-    }
     createModuleStructure(modulePath, folderName, className) {
         return __awaiter(this, void 0, void 0, function* () {
             const entitiesDir = path.join(modulePath, "entities");
             yield fs_1.promises.mkdir(entitiesDir, { recursive: true });
             const dtoDir = path.join(modulePath, "dto");
             yield fs_1.promises.mkdir(dtoDir, { recursive: true });
+            const interfacesDir = path.join(modulePath, "interfaces");
+            yield fs_1.promises.mkdir(interfacesDir, { recursive: true });
             const files = {
                 [`dto/create-${folderName}.dto.ts`]: (0, create_dto_template_1.generateCreateDtoContent)(className),
                 [`dto/update-${folderName}.dto.ts`]: (0, update_dto_template_1.generateUpdateDtoContent)(className, folderName),
+                [`dto/filtering-${folderName}.dto.ts`]: (0, filtering_template_1.generateFilteringContent)(className),
                 [`dto/response-${folderName}.dto.ts`]: (0, response_template_1.generateResponseDtoContent)(className),
                 [`${folderName}.module.ts`]: (0, module_template_1.generateModuleContent)(className, folderName),
                 [`${folderName}.controller.ts`]: (0, contoller_template_1.generateControllerContent)(className, folderName),
                 [`${folderName}.service.ts`]: (0, service_template_1.generateServiceContent)(className, folderName),
                 [`${folderName}.repository.ts`]: (0, repository_template_1.generateRepositoryContent)(className, folderName),
-                [`entities/${folderName}.entity.ts`]: (0, entities_template_1.generateEntityContent)(className),
+                [`entities/${folderName}.entity.ts`]: (0, entities_template_1.generateEntityContent)(className, folderName),
+                [`interfaces/${folderName}.interface.ts`]: (0, interface_tempalate_1.generateInterfaceContent)(className),
             };
             for (const [fileName, content] of Object.entries(files)) {
                 yield fs_1.promises.writeFile(path.join(modulePath, fileName), content);

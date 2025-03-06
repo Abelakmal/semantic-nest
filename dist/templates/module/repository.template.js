@@ -2,20 +2,15 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.generateRepositoryContent = void 0;
 function generateRepositoryContent(className, folderName) {
-    return `import { DataSource, Repository } from 'typeorm';
-import { Injectable } from '@nestjs/common';
+    return `import { Injectable } from '@nestjs/common';
+import { BaseRepository } from 'src/common/bases/base.repository';
 import { ${className} } from './entities/${folderName}.entity';
+import { DataSource } from 'typeorm';
 
 @Injectable()
-export class ${className}Repository extends Repository<${className}> {
-  constructor(private dataSource: DataSource) {
-    super(${className}, dataSource.createEntityManager());
-  }
-
-  async firstWhere(column: string, value: string | number, operator = '='): Promise<${className} | null> {
-    return await this.createQueryBuilder()
-                     .where(\`${className}.\${column} \${operator} :value\`, { value })
-                     .getOne();
+export class ${className}Repository extends BaseRepository<${className}> {
+  constructor(private readonly datasource: DataSource) {
+    super(${className}, datasource);
   }
 }`;
 }

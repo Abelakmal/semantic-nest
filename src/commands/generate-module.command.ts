@@ -9,6 +9,9 @@ import { generateEntityContent } from "../templates/module/entities.template";
 import { generateCreateDtoContent } from "../templates/module/create-dto.template";
 import { generateUpdateDtoContent } from "../templates/module/update-dto.template";
 import { generateResponseDtoContent } from "../templates/module/response.template";
+import { generateFilteringContent } from "../templates/module/filtering.template";
+import { generateInterfaceContent } from "../templates/module/interface.tempalate";
+import { capitalize, toCamelCase } from "../helpers/text-format.helper";
 
 @Command({
   name: "generate:module",
@@ -25,7 +28,7 @@ export class GenerateModuleCommand extends CommandRunner {
       return;
     }
 
-    const className = this.capitalize(moduleName);
+    const className = toCamelCase(capitalize(moduleName));
     const folderName = moduleName.toLowerCase();
     const modulePath = path.join(process.cwd(), "src", "modules", folderName);
 
@@ -43,10 +46,6 @@ export class GenerateModuleCommand extends CommandRunner {
     this.moduleName = value;
   }
 
-  private capitalize(text: string): string {
-    return text.charAt(0).toUpperCase() + text.slice(1);
-  }
-
   private async createModuleStructure(
     modulePath: string,
     folderName: string,
@@ -58,12 +57,17 @@ export class GenerateModuleCommand extends CommandRunner {
     const dtoDir = path.join(modulePath, "dto");
     await fs.mkdir(dtoDir, { recursive: true });
 
+    const interfacesDir = path.join(modulePath, "interfaces");
+    await fs.mkdir(interfacesDir, { recursive: true });
+
     const files = {
       [`dto/create-${folderName}.dto.ts`]: generateCreateDtoContent(className),
       [`dto/update-${folderName}.dto.ts`]: generateUpdateDtoContent(
         className,
         folderName
       ),
+      [`dto/filtering-${folderName}.dto.ts`]:
+        generateFilteringContent(className),
       [`dto/response-${folderName}.dto.ts`]:
         generateResponseDtoContent(className),
       [`${folderName}.module.ts`]: generateModuleContent(className, folderName),
@@ -79,7 +83,12 @@ export class GenerateModuleCommand extends CommandRunner {
         className,
         folderName
       ),
-      [`entities/${folderName}.entity.ts`]: generateEntityContent(className),
+      [`entities/${folderName}.entity.ts`]: generateEntityContent(
+        className,
+        folderName
+      ),
+      [`interfaces/${folderName}.interface.ts`]:
+        generateInterfaceContent(className),
     };
 
     for (const [fileName, content] of Object.entries(files)) {
