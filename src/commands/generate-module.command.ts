@@ -110,8 +110,8 @@ export class GenerateModuleCommand extends CommandRunner {
 
       const importStatement = `import { ${className}Module } from './modules/${folderName}/${folderName}.module';\n`;
       const updatedContent = appModuleContent.replace(
-        /(@Module\({\s*imports:\s*\[)/,
-        `$1\n    ${className}Module,`
+        /(imports:\s*\[[^\]]*)(\s*\])/,
+        `$1,\n    ${className}Module$2`
       );
 
       await fs.writeFile(appModulePath, importStatement + updatedContent);

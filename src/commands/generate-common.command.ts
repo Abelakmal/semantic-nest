@@ -13,6 +13,15 @@ import { FileMapType } from "../interfaces/general.type";
 import { generateSwaggerExampleResponseContent } from "../templates/common/swagger/swagger-example-response.template";
 import { generateGlobalInterfaceContent } from "../templates/common/interfaces/global-interface.template";
 import { generateJwtInterfaceContent } from "../templates/common/interfaces/jwt-interface.template";
+import { generateBaseExceptionContent } from "../templates/common/bases/exceptions/base-exception.template";
+import { generateBadRequstExceptionContent } from "../templates/common/bases/exceptions/customs/bad-request-exception.template";
+import { generateConflictExceptionContent } from "../templates/common/bases/exceptions/customs/conflict-exception.template";
+import { generateForbidenExceptionContent } from "../templates/common/bases/exceptions/customs/forbiden-exception.tempalate";
+import { generateNotFoundExceptionContent } from "../templates/common/bases/exceptions/customs/not-found-exception.template";
+import { generateToManyRequestExceptionContent } from "../templates/common/bases/exceptions/customs/to-many-request-exception.template";
+import { generateUnauthorizedContent } from "../templates/common/bases/exceptions/customs/unauthorized-exception.template";
+import { generateUnsupportExceptionContent } from "../templates/common/bases/exceptions/customs/unsupport-exception.template";
+import { geenratePathParamaterDtoContent } from "../templates/common/dto/path-paramater-dto.template";
 
 @Command({
   name: "generate:common",
@@ -31,10 +40,12 @@ export class GenerateCommonCommand extends CommandRunner {
 
     try {
       await this.createCommandStructure(modulePath);
+      await this.updateAppModule();
       await this.updateMainTs();
       console.log(`✅  created common successfully!`);
     } catch (error) {
       console.error("❌ Error generating common:", error);
+      generateBaseEntityContent();
     }
   }
 
@@ -52,7 +63,7 @@ export class GenerateCommonCommand extends CommandRunner {
     await this.handleInterface(modulePath);
   }
 
-  public async handleBaseStructure(modulePath: string): Promise<void> {
+  private async handleBaseStructure(modulePath: string): Promise<void> {
     const basesDir = path.join(modulePath, "bases");
     await fs.mkdir(basesDir, { recursive: true });
 
@@ -67,9 +78,43 @@ export class GenerateCommonCommand extends CommandRunner {
     for (const [fileName, content] of Object.entries(files)) {
       await fs.writeFile(path.join(modulePath, fileName), content);
     }
+
+    await this.handleException(basesDir);
   }
 
-  public async handleDecorator(modulePath: string): Promise<void> {
+  private async handleException(basePath: string) {
+    const exceptionDir = path.join(basePath, "exceptions");
+    await fs.mkdir(exceptionDir, { recursive: true });
+    const templateExceptionDir = path.join(exceptionDir, "templates");
+    await fs.mkdir(templateExceptionDir, { recursive: true });
+
+    const fileExceptionBase = {
+      ["exceptions/base.exception.ts"]: generateBaseExceptionContent(),
+    };
+
+    const fileExceptionTemplate = {
+      ["templates/bad-request.exception.ts"]:
+        generateBadRequstExceptionContent(),
+      ["templates/conflict.exception.ts"]: generateConflictExceptionContent(),
+      ["templates/forbiden.exception.ts"]: generateForbidenExceptionContent(),
+      ["templates/not-found.exception.ts"]: generateNotFoundExceptionContent(),
+      ["templates/to-many-request.exception.ts"]:
+        generateToManyRequestExceptionContent(),
+      ["templates/unauthorized.exception.ts"]: generateUnauthorizedContent(),
+      ["templates/unsuport-media-type.exception.ts"]:
+        generateUnsupportExceptionContent(),
+    };
+
+    for (const [fileName, content] of Object.entries(fileExceptionBase)) {
+      await fs.writeFile(path.join(basePath, fileName), content);
+    }
+
+    for (const [fileName, content] of Object.entries(fileExceptionTemplate)) {
+      await fs.writeFile(path.join(exceptionDir, fileName), content);
+    }
+  }
+
+  private async handleDecorator(modulePath: string): Promise<void> {
     const decoratorDir: string = path.join(modulePath, "decorators");
     await fs.mkdir(decoratorDir, { recursive: true });
 
@@ -82,12 +127,13 @@ export class GenerateCommonCommand extends CommandRunner {
     }
   }
 
-  public async handleDto(modulePath: string): Promise<void> {
+  private async handleDto(modulePath: string): Promise<void> {
     const dtoDir: string = path.join(modulePath, "dto");
     await fs.mkdir(dtoDir, { recursive: true });
 
     const files: FileMapType = {
       ["dto/query-parameter.dto.ts"]: generateQueryParamaterDtoContent(),
+      ["dto/path-paramater.dto.ts"]: geenratePathParamaterDtoContent(),
       ["dto/pagination.dto.ts"]: generatePaginationDtoContent(),
     };
 
@@ -96,7 +142,7 @@ export class GenerateCommonCommand extends CommandRunner {
     }
   }
 
-  public async handleSwagger(modulePath: string): Promise<void> {
+  private async handleSwagger(modulePath: string): Promise<void> {
     const swaggerDir: string = path.join(modulePath, "swagger");
     await fs.mkdir(swaggerDir, { recursive: true });
 
@@ -110,7 +156,7 @@ export class GenerateCommonCommand extends CommandRunner {
     }
   }
 
-  public async handleInterface(modulePath: string): Promise<void> {
+  private async handleInterface(modulePath: string): Promise<void> {
     const interfaceDir: string = path.join(modulePath, "interfaces");
     await fs.mkdir(interfaceDir, { recursive: true });
 
@@ -121,6 +167,32 @@ export class GenerateCommonCommand extends CommandRunner {
 
     for (const [fileName, content] of Object.entries(files)) {
       await fs.writeFile(path.join(modulePath, fileName), content);
+    }
+  }
+
+  private async updateAppModule() {
+    const appModulePath = path.join(process.cwd(), "src", "app.module.ts");
+    try {
+      const appModuleContent = await fs.readFile(appModulePath, "utf-8");
+
+      const importStatement = `import { APP_FILTER, APP_PIPE } from '@nestjs/core';
+import { BaseValidationPipe } from './common/bases/base.validation';
+import { AllExceptionFilter } from './common/bases/exceptions/base.exception';\n\n`;
+
+      const updatedContent = appModuleContent.replace(
+        /(providers:\s*\[[^\]]*)(\s*\])/,
+        `$1,
+    { provide: APP_FILTER, useClass: AllExceptionFilter },
+    { provide: APP_PIPE, useClass: BaseValidationPipe }$2`
+      );
+
+      await fs.writeFile(
+        appModulePath,
+        importStatement + updatedContent,
+        "utf-8"
+      );
+    } catch (error) {
+      console.error("❌ Error updating app.module.ts:", error);
     }
   }
 
@@ -157,12 +229,15 @@ export class GenerateCommonCommand extends CommandRunner {
     });
     `;
 
+    const importStatement = `import { ValidationPipe } from '@nestjs/common';
+import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';\n`;
+
     mainTsContent = mainTsContent.replace(
       /(await app.listen\(\d+\);)/,
       `${configCode}\n  $1`
     );
 
-    await fs.writeFile(mainTsPath, mainTsContent, "utf-8");
+    await fs.writeFile(mainTsPath, importStatement + mainTsContent, "utf-8");
 
     console.log("✅ Konfigurasi berhasil ditambahkan ke main.ts");
   }

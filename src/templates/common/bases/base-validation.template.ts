@@ -4,43 +4,52 @@ export function generateBaseValidationContent(): string {
   BadRequestException,
   Injectable,
   PipeTransform,
+  Type,
 } from '@nestjs/common';
 import { plainToInstance } from 'class-transformer';
-import { validate } from 'class-validator';
+import { validate, ValidationError } from 'class-validator';
 import { BaseExceptionResponse } from './base.response';
 
 @Injectable()
-export class BaseValidationPipe implements PipeTransform<any> {
-  async transform(value: any, { metatype }: ArgumentMetadata) {
+export class BaseValidationPipe implements PipeTransform {
+  async transform(
+    value: unknown,
+    { metatype }: ArgumentMetadata,
+  ): Promise<unknown> {
     if (!metatype || !this.toValidate(metatype)) {
       return value;
     }
-    const object = plainToInstance(metatype, value);
-    const errors = await validate(object);
+
+    const object: object = plainToInstance<object, unknown>(metatype, value);
+    const errors: ValidationError[] = await validate(object);
+
     if (errors.length > 0) {
       throw new BadRequestException(this.formatErrors(errors));
     }
+
     return object;
   }
 
-  private toValidate(metatype: Function): boolean {
-    const types: Function[] = [String, Boolean, Number, Array, Object];
+  private toValidate(metatype: Type<unknown>): boolean {
+    const types: Type<unknown>[] = [String, Boolean, Number, Array, Object];
     return !types.includes(metatype);
   }
 
-  private formatErrors(errors: any[]): BaseExceptionResponse[] {
+  private formatErrors(errors: ValidationError[]): BaseExceptionResponse[] {
     return errors.map((err) => {
-      const { constraints } = err;
-      const code = Object.keys(constraints)[0];
-      const detail = constraints[code];
-      const baseErrorFormat = new BaseExceptionResponse(
-        code,
-        detail,
-        err.property,
-      );
-      return baseErrorFormat;
+      if (!err.constraints)
+        return new BaseExceptionResponse(
+          'unknown_error',
+          'Unknown validation error',
+          err.property,
+        );
+
+      const [code, detail] = Object.entries(err.constraints)[0];
+
+      return new BaseExceptionResponse(code, detail, err.property);
     });
   }
 }
+
     `;
 }

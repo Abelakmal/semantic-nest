@@ -2,28 +2,28 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.generateBaseServiceContent = void 0;
 function generateBaseServiceContent() {
-    return `import {
-  BadRequestException,
-  InternalServerErrorException,
-  NotFoundException,
-} from '@nestjs/common';
-import { BaseRepository } from './base.repository';
+    return `import { BaseRepository } from './base.repository';
 import {
   FindOptionsWhere,
   FindManyOptions,
   FindOptionsOrder,
   QueryFailedError,
+  FindOptionsRelations,
+  EntityNotFoundError,
 } from 'typeorm';
 import { BaseEntity } from './base.entity';
 import { QueryParameterDto } from '../dto/query-parameter.dto';
-import { IJwtPayload } from '../interfaces/jwt-payload.type';
+import { IJwtPayload } from '../interfaces/jwt-payload.interface';
+import { NotFoundException } from './exceptions/templates/not-found.exception';
+import { ConflictException } from './exceptions/templates/conflict.exception';
+import { InternalServerErrorException } from '@nestjs/common';
 
 export abstract class BaseService<
   TEntity extends BaseEntity,
   TCreate,
   TUpdate,
 > {
-  constructor(private readonly repository: BaseRepository<TEntity>) {}
+  constructor(private readonly entitiesRepository: BaseRepository<TEntity>) {}
 
   protected paramBuilder(
     options?: QueryParameterDto,
@@ -48,7 +48,7 @@ export abstract class BaseService<
   }
 
   private handleError(error: unknown, action: string): void {
-    console.error('Error during : ' + action , error);
+    console.error('Error during : ' + action, error);
 
     if (error instanceof QueryFailedError && 'code' in error) {
       const pgError = error as QueryFailedError & {
@@ -58,19 +58,20 @@ export abstract class BaseService<
       if (pgError.code === '23505') {
         const match = pgError.detail?.match(/\(([^)]+)\)/);
         const field = match ? match[1] : 'unknown field';
-        throw new BadRequestException(
+        throw new ConflictException(
           'Duplicate value for unique field: ' + field,
+          field,
+          'duplicateError',
         );
       }
     }
 
-       throw new InternalServerErrorException(
+    throw new InternalServerErrorException(
       'Failed to ' +
         action +
         ': ' +
         (error instanceof Error ? error.message : 'Unknown error'),
     );
-
 
     // Tangani error lain
   }
@@ -97,8 +98,10 @@ export abstract class BaseService<
 
       modifiedDto.createdBy = user?.username;
 
-      const instance: TEntity = this.repository.create(modifiedDto as TEntity);
-      return await this.repository.save(instance);
+      const instance: TEntity = this.entitiesRepository.create(
+        modifiedDto as TEntity,
+      );
+      return await this.entitiesRepository.save(instance);
     } catch (error) {
       this.handleError(error, 'create entity');
       throw error;
@@ -106,7 +109,7 @@ export abstract class BaseService<
   }
 
   async findAll(options?: FindManyOptions<TEntity>): Promise<TEntity[]> {
-    return await this.repository.find(options);
+    return await this.entitiesRepository.find(options);
   }
 
   async findAndCount(
@@ -116,17 +119,67 @@ export abstract class BaseService<
     const queryOptions = Object.keys(options || {}).length
       ? options
       : this.paramBuilder(queryParam);
-    return await this.repository.findAndCount(queryOptions);
+    return await this.entitiesRepository.findAndCount(queryOptions);
   }
 
   async findOneById(
     id: number | string,
     relations: string[] = [],
   ): Promise<TEntity | null> {
-    return await this.repository.findOne({
+    return await this.entitiesRepository.findOne({
       where: { id } as FindOptionsWhere<TEntity>,
       relations,
     });
+  }
+
+  async findOneByIdOrFail(
+    id: number | string,
+    relations: string[] = [],
+  ): Promise<TEntity> {
+    try {
+      const instance = await this.entitiesRepository.findOneOrFail({
+        where: { id } as FindOptionsWhere<TEntity>,
+        relations,
+      });
+
+      return instance;
+    } catch (error) {
+      if (error instanceof EntityNotFoundError) {
+        throw new NotFoundException(
+          this.entitiesRepository.metadata.name +
+            " with Property '" +
+            id +
+            "' not found",
+          'id',
+        );
+      }
+      throw error;
+    }
+  }
+
+  async findOneByOrFail(
+    options: FindOptionsWhere<TEntity>,
+    relations?: FindOptionsRelations<TEntity>,
+  ): Promise<TEntity> {
+    try {
+      const instance = await this.entitiesRepository.findOne({
+        where: options,
+        relations: relations,
+      });
+      if (!instance) {
+        throw new NotFoundException(
+          this.entitiesRepository.metadata.name +
+            ' with Property ' +
+            JSON.stringify(options) +
+            ' not found',
+          Object.keys(options).join(', ') || '',
+        );
+      }
+      return instance;
+    } catch (error) {
+      console.error(error);
+      throw error;
+    }
   }
 
   async update(
@@ -134,15 +187,7 @@ export abstract class BaseService<
     updateDto: TUpdate,
     user?: IJwtPayload,
   ): Promise<TEntity> {
-    const entity: TEntity | null = await this.repository.findOne({
-      where: { id } as FindOptionsWhere<TEntity>,
-    });
-
-    if (!entity) {
-      throw new NotFoundException(
-        this.repository.metadata.name + ' with ID ' + id + ' not found',
-      );
-    }
+    const entity: TEntity | null = await this.findOneByIdOrFail(id);
 
     const relations =
       (Reflect.getMetadata('relations', updateDto as object) as string[]) || [];
@@ -161,22 +206,23 @@ export abstract class BaseService<
     Object.assign(entity, updateDto);
     entity.deletedBy = user?.username;
 
-    return await this.repository.save(entity);
+    return await this.entitiesRepository.save(entity);
   }
 
   async softRemove(id: number | string, user?: IJwtPayload): Promise<TEntity> {
-    const entity = await this.findOneById(id);
-    if (!entity) {
-      throw new NotFoundException(
-        this.repository.metadata.name + ' with ID ' + id + ' not found',
-      );
-    }
+    try {
+      const entity = await this.findOneByIdOrFail(id);
 
-    entity.deletedBy = user?.username;
-    await this.repository.save(entity);
-    return await this.repository.softRemove(entity);
+      entity.deletedBy = user?.username;
+      await this.entitiesRepository.save(entity);
+      return await this.entitiesRepository.softRemove(entity);
+    } catch (error) {
+      console.error(error);
+      throw error;
+    }
   }
 }
+
 `;
 }
 exports.generateBaseServiceContent = generateBaseServiceContent;

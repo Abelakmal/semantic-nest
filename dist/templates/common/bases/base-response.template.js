@@ -37,12 +37,12 @@ export class BaseSuccessResponse<TData> {
 export class BaseExceptionResponse {
   code: string;
   detail: string;
-  attr?: string;
+  attr: string | null;
 
   constructor(code: string, detail: string, attr?: string) {
     this.code = code;
     this.detail = detail;
-    this.attr = attr ? attr : '';
+    this.attr = attr ? attr : null;
   }
 }
 
@@ -73,25 +73,25 @@ export class BaseErrorResponse {
 }
 
 export class ResponseWrapperService {
-  async list<TData>(
+  list<TData>(
     data: TData,
     meta: BasePaginationResponse,
-  ): Promise<BaseSuccessResponse<TData>> {
+  ): BaseSuccessResponse<TData> {
     return new BaseSuccessResponse(data, meta);
   }
 
-  async detail<TData>(data: TData): Promise<BaseSuccessResponse<TData>> {
+  detail<TData>(data: TData): BaseSuccessResponse<TData> {
     const result = new BaseSuccessResponse(data);
     delete result.meta;
     return result;
   }
 
-  async error(
+  error(
     type: string,
     errors: BaseExceptionResponse | BaseExceptionResponse[] | string | object,
     path: string,
     timestamp?: Date,
-  ): Promise<BaseErrorResponse> {
+  ): BaseErrorResponse {
     return new BaseErrorResponse(type, errors, path, timestamp);
   }
 }
