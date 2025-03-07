@@ -35,6 +35,8 @@ import { BaseSuccessResponse } from 'src/common/bases/base.response';
 import { plainToInstance } from 'class-transformer';
 import { Filtering${className}Dto } from './dto/filtering-${folderName}.dto';
 import { Update${className}Dto } from './dto/update-${folderName}.dto';
+import { PathParameterDto } from 'src/common/dto/path-paramater.dto';
+
 
 @Controller('${pluralFolderName}')
 @ApiTags('${className}')
@@ -84,11 +86,11 @@ export class ${className}Controller {
   }
 
   @Get(':id')
-  @DetailSwaggerExample(Response${className}Dto, 'Mengambil Data ${className} By ID')
+  @DetailSwaggerExample(Response${className}Dto, 'Mengambil Data ${className} dengan ID')
   async findOne(
-    @Param('id') id: string,
+     @Param() pathParamater: PathParameterDto,
   ): Promise<BaseSuccessResponse<Response${className}Dto>> {
-    const result = await this.${folderNameCamelCase}Service.findOneById(id);
+    const result = await this.${folderNameCamelCase}Service.findOneByIdOrFail(pathParamater.id,);
 
     return {
       data: plainToInstance(Response${className}Dto, result, {
@@ -98,13 +100,13 @@ export class ${className}Controller {
   }
 
   @Patch(':id')
-  @DetailSwaggerExample(Response${className}Dto, 'Mengupdate Data ${className} By ID')
+  @DetailSwaggerExample(Response${className}Dto, 'Mengupdate Data ${className} By Id')
   async update(
-    @Param('id') id: string,
+    @Param() pathParamater: PathParameterDto,
     @Body() update: Update${className}Dto,
     @Request() req: ExpressRequest,
   ): Promise<BaseSuccessResponse<Response${className}Dto>> {
-    const result = await this.${folderNameCamelCase}Service.update(id, update, req.user);
+    const result = await this.${folderNameCamelCase}Service.update(pathParamater.id, update, req.user);
 
     return {
       data: plainToInstance(Response${className}Dto, result, {
@@ -115,12 +117,12 @@ export class ${className}Controller {
 
   @Delete(':id')
   @HttpCode(204)
-  @DeleteSwaggerExample('Menghapus Data ${className} By ID')
+  @DeleteSwaggerExample('Menghapus Data ${className} dengan Id')
   async remove(
-    @Param('id') id: string,
+    @Param() pathParamater: PathParameterDto,
     @Request() req: ExpressRequest,
   ): Promise<void> {
-    await this.${folderNameCamelCase}Service.softRemove(id, req.user);
+    await this.${folderNameCamelCase}Service.softRemove(pathParamater.id, req.user);
   }
 }`;
 }

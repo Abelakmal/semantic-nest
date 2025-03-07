@@ -30,6 +30,15 @@ const pagination_dto_template_1 = require("../templates/common/dto/pagination-dt
 const swagger_example_response_template_1 = require("../templates/common/swagger/swagger-example-response.template");
 const global_interface_template_1 = require("../templates/common/interfaces/global-interface.template");
 const jwt_interface_template_1 = require("../templates/common/interfaces/jwt-interface.template");
+const base_exception_template_1 = require("../templates/common/bases/exceptions/base-exception.template");
+const bad_request_exception_template_1 = require("../templates/common/bases/exceptions/customs/bad-request-exception.template");
+const conflict_exception_template_1 = require("../templates/common/bases/exceptions/customs/conflict-exception.template");
+const forbiden_exception_tempalate_1 = require("../templates/common/bases/exceptions/customs/forbiden-exception.tempalate");
+const not_found_exception_template_1 = require("../templates/common/bases/exceptions/customs/not-found-exception.template");
+const to_many_request_exception_template_1 = require("../templates/common/bases/exceptions/customs/to-many-request-exception.template");
+const unauthorized_exception_template_1 = require("../templates/common/bases/exceptions/customs/unauthorized-exception.template");
+const unsupport_exception_template_1 = require("../templates/common/bases/exceptions/customs/unsupport-exception.template");
+const path_paramater_dto_template_1 = require("../templates/common/dto/path-paramater-dto.template");
 let GenerateCommonCommand = class GenerateCommonCommand extends nest_commander_1.CommandRunner {
     run(passedParams, options) {
         var _a, _b;
@@ -42,11 +51,13 @@ let GenerateCommonCommand = class GenerateCommonCommand extends nest_commander_1
             const modulePath = path.join(process.cwd(), "src", "common");
             try {
                 yield this.createCommandStructure(modulePath);
+                yield this.updateAppModule();
                 yield this.updateMainTs();
                 console.log(`✅  created common successfully!`);
             }
             catch (error) {
                 console.error("❌ Error generating common:", error);
+                (0, base_entity_template_1.generateBaseEntityContent)();
             }
         });
     }
@@ -77,6 +88,33 @@ let GenerateCommonCommand = class GenerateCommonCommand extends nest_commander_1
             for (const [fileName, content] of Object.entries(files)) {
                 yield fs_1.promises.writeFile(path.join(modulePath, fileName), content);
             }
+            yield this.handleException(basesDir);
+        });
+    }
+    handleException(basePath) {
+        return __awaiter(this, void 0, void 0, function* () {
+            const exceptionDir = path.join(basePath, "exceptions");
+            yield fs_1.promises.mkdir(exceptionDir, { recursive: true });
+            const templateExceptionDir = path.join(exceptionDir, "templates");
+            yield fs_1.promises.mkdir(templateExceptionDir, { recursive: true });
+            const fileExceptionBase = {
+                ["exceptions/base.exception.ts"]: (0, base_exception_template_1.generateBaseExceptionContent)(),
+            };
+            const fileExceptionTemplate = {
+                ["templates/bad-request.exception.ts"]: (0, bad_request_exception_template_1.generateBadRequstExceptionContent)(),
+                ["templates/conflict.exception.ts"]: (0, conflict_exception_template_1.generateConflictExceptionContent)(),
+                ["templates/forbiden.exception.ts"]: (0, forbiden_exception_tempalate_1.generateForbidenExceptionContent)(),
+                ["templates/not-found.exception.ts"]: (0, not_found_exception_template_1.generateNotFoundExceptionContent)(),
+                ["templates/to-many-request.exception.ts"]: (0, to_many_request_exception_template_1.generateToManyRequestExceptionContent)(),
+                ["templates/unauthorized.exception.ts"]: (0, unauthorized_exception_template_1.generateUnauthorizedContent)(),
+                ["templates/unsuport-media-type.exception.ts"]: (0, unsupport_exception_template_1.generateUnsupportExceptionContent)(),
+            };
+            for (const [fileName, content] of Object.entries(fileExceptionBase)) {
+                yield fs_1.promises.writeFile(path.join(basePath, fileName), content);
+            }
+            for (const [fileName, content] of Object.entries(fileExceptionTemplate)) {
+                yield fs_1.promises.writeFile(path.join(exceptionDir, fileName), content);
+            }
         });
     }
     handleDecorator(modulePath) {
@@ -97,6 +135,7 @@ let GenerateCommonCommand = class GenerateCommonCommand extends nest_commander_1
             yield fs_1.promises.mkdir(dtoDir, { recursive: true });
             const files = {
                 ["dto/query-parameter.dto.ts"]: (0, query_paramater_dto_template_1.generateQueryParamaterDtoContent)(),
+                ["dto/path-paramater.dto.ts"]: (0, path_paramater_dto_template_1.geenratePathParamaterDtoContent)(),
                 ["dto/pagination.dto.ts"]: (0, pagination_dto_template_1.generatePaginationDtoContent)(),
             };
             for (const [fileName, content] of Object.entries(files)) {
@@ -126,6 +165,24 @@ let GenerateCommonCommand = class GenerateCommonCommand extends nest_commander_1
             };
             for (const [fileName, content] of Object.entries(files)) {
                 yield fs_1.promises.writeFile(path.join(modulePath, fileName), content);
+            }
+        });
+    }
+    updateAppModule() {
+        return __awaiter(this, void 0, void 0, function* () {
+            const appModulePath = path.join(process.cwd(), "src", "app.module.ts");
+            try {
+                const appModuleContent = yield fs_1.promises.readFile(appModulePath, "utf-8");
+                const importStatement = `import { APP_FILTER, APP_PIPE } from '@nestjs/core';
+import { BaseValidationPipe } from './common/bases/base.validation';
+import { AllExceptionFilter } from './common/bases/exceptions/base.exception';\n\n`;
+                const updatedContent = appModuleContent.replace(/(providers:\s*\[[^\]]*)(\s*\])/, `$1,
+    { provide: APP_FILTER, useClass: AllExceptionFilter },
+    { provide: APP_PIPE, useClass: BaseValidationPipe }$2`);
+                yield fs_1.promises.writeFile(appModulePath, importStatement + updatedContent, "utf-8");
+            }
+            catch (error) {
+                console.error("❌ Error updating app.module.ts:", error);
             }
         });
     }
@@ -160,8 +217,10 @@ let GenerateCommonCommand = class GenerateCommonCommand extends nest_commander_1
       customSiteTitle: 'E-Wawancara',
     });
     `;
+            const importStatement = `import { ValidationPipe } from '@nestjs/common';
+import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';\n`;
             mainTsContent = mainTsContent.replace(/(await app.listen\(\d+\);)/, `${configCode}\n  $1`);
-            yield fs_1.promises.writeFile(mainTsPath, mainTsContent, "utf-8");
+            yield fs_1.promises.writeFile(mainTsPath, importStatement + mainTsContent, "utf-8");
             console.log("✅ Konfigurasi berhasil ditambahkan ke main.ts");
         });
     }

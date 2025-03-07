@@ -93,7 +93,7 @@ let GenerateModuleCommand = class GenerateModuleCommand extends nest_commander_1
                     return;
                 }
                 const importStatement = `import { ${className}Module } from './modules/${folderName}/${folderName}.module';\n`;
-                const updatedContent = appModuleContent.replace(/(@Module\({\s*imports:\s*\[)/, `$1\n    ${className}Module,`);
+                const updatedContent = appModuleContent.replace(/(imports:\s*\[[^\]]*)(\s*\])/, `$1,\n    ${className}Module$2`);
                 yield fs_1.promises.writeFile(appModulePath, importStatement + updatedContent);
                 console.log(`✅ ${className}Module has been added to app.module.ts`);
             }

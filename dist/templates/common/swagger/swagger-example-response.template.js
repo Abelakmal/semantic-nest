@@ -6,6 +6,7 @@ function generateSwaggerExampleResponseContent() {
 import {
   ApiBadRequestResponse,
   ApiBody,
+  ApiConflictResponse,
   ApiCreatedResponse,
   ApiExtraModels,
   ApiForbiddenResponse,
@@ -28,7 +29,7 @@ import {
 } from '../bases/base.response';
 
 interface Model {
-  new (...args: any[]): {};
+  new (...args: object[]): object;
 }
 
 function successSchema(
@@ -36,13 +37,13 @@ function successSchema(
   isArray: boolean = false,
   isMeta: boolean = false,
 ): SchemaObject {
-  let meta: any = null;
+  let meta: SchemaObject | undefined = undefined;
   if (isMeta) {
     meta = {
       example: new BasePaginationResponse(),
     };
   }
-  let dataValue: Object = {
+  let dataValue: object = {
     $ref: getSchemaPath(data),
   };
   if (isArray) {
@@ -61,14 +62,17 @@ function successSchema(
       {
         properties: {
           data: dataValue,
-          meta: meta,
+          ...(meta && { meta }),
         },
       },
     ],
   };
 }
 
-function errorSchema(type: string, errors?: any | any[]): SchemaObject {
+function errorSchema<T extends object>(
+  type: string,
+  errors?: T | T[],
+): SchemaObject {
   return {
     allOf: [
       {
@@ -182,6 +186,7 @@ function errorNotFoundResponse() {
   const errorsResponse = new BaseExceptionResponse(
     'notFound',
     'Resource not found.',
+    'fieldName',
   );
   return ApiNotFoundResponse({
     description: 'Not Found',
@@ -206,6 +211,19 @@ function errorBadRequestResponse() {
       firstErrorResponse,
       secondErrorResponse,
     ]),
+  });
+}
+
+function errorConflictResponse() {
+  const firstErrorResponse = new BaseExceptionResponse(
+    'duplicateError',
+    'Duplicate value for unique field.',
+    'fieldName',
+  );
+
+  return ApiConflictResponse({
+    description: 'Conflict',
+    schema: errorSchema('duplicateError', [firstErrorResponse]),
   });
 }
 
@@ -258,6 +276,7 @@ export function DetailSwaggerExample(data: Model, message?: string) {
     detailSuccessResponse(data),
     basicError(),
     errorNotFoundResponse(),
+    errorConflictResponse(),
   );
 }
 
@@ -272,6 +291,7 @@ export function CreateSwaggerExample(
     ApiExtraModels(data),
     createSuccessResponse(response, isArray),
     basicError(),
+    errorConflictResponse(),
     ApiBody({
       type: data,
       isArray: isArray,
@@ -286,6 +306,7 @@ export function DeleteSwaggerExample(message?: string) {
     basicError(),
   );
 }
+
 `;
 }
 exports.generateSwaggerExampleResponseContent = generateSwaggerExampleResponseContent;
