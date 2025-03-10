@@ -22,7 +22,7 @@ $ nax generate:module <name>
 ## Generate Common
 
 ```
-$ nax generate:module <name>
+$ nax generate:common <name orm>
 
 ```
 

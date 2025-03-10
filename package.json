@@ -1,6 +1,6 @@
 {
-  "name": "nest-cli-costum",
-  "version": "2.0.0",
+  "name": "nest-cli-custom",
+  "version": "2.0.1",
   "description": "A CLI tool to generate TypeORM repositories for NestJS projects",
   "author": "Abel Akmal",
   "license": "MIT",
