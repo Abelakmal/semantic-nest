@@ -39,6 +39,8 @@ const to_many_request_exception_template_1 = require("../templates/common/bases/
 const unauthorized_exception_template_1 = require("../templates/common/bases/exceptions/customs/unauthorized-exception.template");
 const unsupport_exception_template_1 = require("../templates/common/bases/exceptions/customs/unsupport-exception.template");
 const path_paramater_dto_template_1 = require("../templates/common/dto/path-paramater-dto.template");
+const config_template_1 = require("../templates/common/config/config.template");
+const database_template_1 = require("../templates/common/database/database.template");
 let GenerateCommonCommand = class GenerateCommonCommand extends nest_commander_1.CommandRunner {
     run(passedParams, options) {
         var _a, _b;
@@ -51,6 +53,8 @@ let GenerateCommonCommand = class GenerateCommonCommand extends nest_commander_1
             const modulePath = path.join(process.cwd(), "src", "common");
             try {
                 yield this.createCommandStructure(modulePath);
+                yield this.handleConfig();
+                yield this.handleDatabase();
                 yield this.updateAppModule();
                 yield this.updateMainTs();
                 console.log(`✅  created common successfully!`);
@@ -143,6 +147,30 @@ let GenerateCommonCommand = class GenerateCommonCommand extends nest_commander_1
             }
         });
     }
+    handleDatabase() {
+        return __awaiter(this, void 0, void 0, function* () {
+            const databaseDir = path.join(process.cwd(), "src", "database");
+            yield fs_1.promises.mkdir(databaseDir, { recursive: true });
+            const files = {
+                ["database.ts"]: (0, database_template_1.generateDatabaseContent)()
+            };
+            for (const [fileName, content] of Object.entries(files)) {
+                yield fs_1.promises.writeFile(path.join(databaseDir, fileName), content);
+            }
+        });
+    }
+    handleConfig() {
+        return __awaiter(this, void 0, void 0, function* () {
+            const configDir = path.join(process.cwd(), "src", "config");
+            yield fs_1.promises.mkdir(configDir, { recursive: true });
+            const files = {
+                ["config.module.ts"]: (0, config_template_1.generateConfigContent)()
+            };
+            for (const [fileName, content] of Object.entries(files)) {
+                yield fs_1.promises.writeFile(path.join(configDir, fileName), content);
+            }
+        });
+    }
     handleSwagger(modulePath) {
         return __awaiter(this, void 0, void 0, function* () {
             const swaggerDir = path.join(modulePath, "swagger");
@@ -173,10 +201,16 @@ let GenerateCommonCommand = class GenerateCommonCommand extends nest_commander_1
             const appModulePath = path.join(process.cwd(), "src", "app.module.ts");
             try {
                 const appModuleContent = yield fs_1.promises.readFile(appModulePath, "utf-8");
-                const importStatement = `import { APP_FILTER, APP_PIPE } from '@nestjs/core';
+                const importStatement = `import { TypeOrmModule } from '@nestjs/typeorm';
+import { typeOrmConfig } from './database/database';
+import { APP_FILTER, APP_PIPE } from '@nestjs/core';
 import { BaseValidationPipe } from './common/bases/base.validation';
 import { AllExceptionFilter } from './common/bases/exceptions/base.exception';\n\n`;
-                const updatedContent = appModuleContent.replace(/(providers:\s*\[[^\]]*)(\s*\])/, `$1,
+                const updatedModule = appModuleContent.replace(/(imports:\s*\[[^\]]*)(\s*\])/, `$1,\n    TypeOrmModule.forRootAsync({
+      useFactory: async () => await typeOrmConfig(),
+      inject: [],
+    }),\n$2`);
+                const updatedContent = updatedModule.replace(/(providers:\s*\[[^\]]*)(\s*\])/, `$1,
     { provide: APP_FILTER, useClass: AllExceptionFilter },
     { provide: APP_PIPE, useClass: BaseValidationPipe }$2`);
                 yield fs_1.promises.writeFile(appModulePath, importStatement + updatedContent, "utf-8");

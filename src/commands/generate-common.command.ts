@@ -22,6 +22,8 @@ import { generateToManyRequestExceptionContent } from "../templates/common/bases
 import { generateUnauthorizedContent } from "../templates/common/bases/exceptions/customs/unauthorized-exception.template";
 import { generateUnsupportExceptionContent } from "../templates/common/bases/exceptions/customs/unsupport-exception.template";
 import { geenratePathParamaterDtoContent } from "../templates/common/dto/path-paramater-dto.template";
+import { generateConfigContent } from "../templates/common/config/config.template";
+import { generateDatabaseContent } from "../templates/common/database/database.template";
 
 @Command({
   name: "generate:common",
@@ -40,6 +42,8 @@ export class GenerateCommonCommand extends CommandRunner {
 
     try {
       await this.createCommandStructure(modulePath);
+      await this.handleConfig()
+      await this.handleDatabase()
       await this.updateAppModule();
       await this.updateMainTs();
       console.log(`✅  created common successfully!`);
@@ -141,6 +145,33 @@ export class GenerateCommonCommand extends CommandRunner {
       await fs.writeFile(path.join(modulePath, fileName), content);
     }
   }
+  
+  private async handleDatabase(): Promise<void> {
+    const databaseDir = path.join(process.cwd(),"src" , "database")
+    await fs.mkdir(databaseDir, {recursive:true})
+
+    const files: FileMapType = {
+      ["database.ts"] : generateDatabaseContent()
+    }
+
+    for(const [fileName ,content] of Object.entries(files)){
+      await fs.writeFile(path.join(databaseDir, fileName) , content)
+    }
+
+  }
+
+  private async handleConfig(): Promise<void> {
+    const configDir = path.join(process.cwd(), "src", "config")
+    await fs.mkdir(configDir,{recursive: true})
+
+    const files: FileMapType = {
+      ["config.module.ts"] : generateConfigContent()
+    }
+
+    for(const [fileName ,content] of Object.entries(files)){
+      await fs.writeFile(path.join(configDir, fileName) , content)
+    }
+  }
 
   private async handleSwagger(modulePath: string): Promise<void> {
     const swaggerDir: string = path.join(modulePath, "swagger");
@@ -175,11 +206,23 @@ export class GenerateCommonCommand extends CommandRunner {
     try {
       const appModuleContent = await fs.readFile(appModulePath, "utf-8");
 
-      const importStatement = `import { APP_FILTER, APP_PIPE } from '@nestjs/core';
+      const importStatement = `import { TypeOrmModule } from '@nestjs/typeorm';
+import { typeOrmConfig } from './database/database';
+import { APP_FILTER, APP_PIPE } from '@nestjs/core';
 import { BaseValidationPipe } from './common/bases/base.validation';
 import { AllExceptionFilter } from './common/bases/exceptions/base.exception';\n\n`;
 
-      const updatedContent = appModuleContent.replace(
+const updatedModule = appModuleContent.replace(
+  /(imports:\s*\[[^\]]*)(\s*\])/,
+  `$1,\n    TypeOrmModule.forRootAsync({
+      useFactory: async () => await typeOrmConfig(),
+      inject: [],
+    }),\n$2`
+);
+
+
+
+      const updatedContent = updatedModule.replace(
         /(providers:\s*\[[^\]]*)(\s*\])/,
         `$1,
     { provide: APP_FILTER, useClass: AllExceptionFilter },

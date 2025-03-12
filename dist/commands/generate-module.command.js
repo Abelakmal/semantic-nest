@@ -93,7 +93,12 @@ let GenerateModuleCommand = class GenerateModuleCommand extends nest_commander_1
                     return;
                 }
                 const importStatement = `import { ${className}Module } from './modules/${folderName}/${folderName}.module';\n`;
-                const updatedContent = appModuleContent.replace(/(imports:\s*\[[^\]]*)(\s*\])/, `$1,\n    ${className}Module$2`);
+                const moduleRegex = /(imports:\s*\[)([^]*?)(\s*\])/;
+                const updatedContent = appModuleContent.replace(moduleRegex, (match, start, modules, end) => {
+                    const trimmedModules = modules.trim();
+                    const needsComma = trimmedModules.length > 0 ? ',' : '';
+                    return `${start}${modules}${needsComma}\n    ${className}Module${end}`;
+                });
                 yield fs_1.promises.writeFile(appModulePath, importStatement + updatedContent);
                 console.log(`✅ ${className}Module has been added to app.module.ts`);
             }
